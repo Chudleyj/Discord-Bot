@@ -45,7 +45,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 // Simple ping to see if the bot is online
 			case 'ping': // 'ping'
 // Respond to ping
-				bot.sendMessage({to: channelID, message: "Pong!"});
+				message_to("`Pong!`", channelID);
 			break; // End 'ping'
 			
 //Display channel ID
@@ -57,6 +57,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 // Set the default channel
 			case 'default': // 'channel'
 // TODO: Sets the default channel for this server
+				message_to("`This feature has no functionality yet.`", channelID);
 			break; // End 'channel'
 			
 // Help command
@@ -82,18 +83,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 			case 'chickens': // 'chickens'
 // Make sure the user exists
 				check(user, userID);
-// Count how many chickens a user has
-// TODO: Easier way to do this?
-				var x = count_chickens(userID);
-				var message = '';
-// Append the chickens' stats to a message
-				for (var y = 0; y < x; y++)
-					message += "level : " + points[userID].chickens[y].level + 
-						"   HP : " + points[userID].chickens[y].max_hp +
-						"   Attack : " + points[userID].chickens[y].atk +
-						"   Heal : " + points[userID].chickens[y].heal + '\n';
-// Send the message
-				message_to(message, channelID);
+				chicken_display(userID, channelID);
 			break; // End 'chickens'
 			
 // Take all the eggs!
@@ -217,7 +207,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				}
 				else
 // Display the usage for this command
-					bot.sendMessage({to: channelID, message: "`Usage: open [rare/common]`"});
+					bot.sendMessage({to: channelID, message: "`Usage: open [rare/common/both]`"});
 			break;// End 'open'
 			
 // Same as open
@@ -242,16 +232,25 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				}
 				else
 // Display the usage for this command
-					bot.sendMessage({to: channelID, message: "`Usage: open [rare/common]`"});
+					bot.sendMessage({to: channelID, message: "`Usage: open [rare/common/both]`"});
 			break; // End 'hatch'
 			
 // Chicken fight team!
-// TODO: What do we want to do here?
 			case 'lineup': // 'lineup'
 				check(user, userID);
 				lineup(args, userID, channelID);
-				// list available, pick which ones
 			break; // End 'lineup'
+			
+// Remove a chicken
+			case 'remove': // 'remove'
+				check(user, userID);
+				if (args[0] == null)
+					chicken_display(userID, channelID);
+				else if (points[userID].fight_status != 0)
+					message_to("`You cannot do that in combat!`", channelID);
+				else
+					remove_chicken(userID, args[0], channelID);
+			break; // End 'remove'
 			
 // Stop typing '!test' !!
 			case 'test': // 'test'
@@ -298,7 +297,42 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 	// }
 // };
 
+function remove_chicken(userID, chicken_num, channelID){
+	var number_of_chickens = count_chickens(userID)
+	if (number_of_chickens >= 1 && chicken_num < number_of_chickens){
+		message_to("`" + chicken_num + ") level : " + points[userID].chickens[chicken_num - 1].level + 
+				"   HP : " + points[userID].chickens[chicken_num - 1].current_hp +
+				"/" + points[userID].chickens[chicken_num - 1].max_hp +
+				"   Attack : " + points[userID].chickens[chicken_num - 1].atk +
+				"   Heal : " + points[userID].chickens[chicken_num - 1].heal + '\n' + 
+				"Has been removed!`", channelID);
+		if  (points[userID].lineup == chicken_num - 1)
+			points[userID].lineup = -1;
+		points[userID].chickens.splice(chicken_num - 1, 1);
+	}
+	else 
+		message_to("That chicken cannot be removed!", channelID);
+	updateJSON();
+};
 
+function chicken_display(userID, channelID){
+///////////////////////////////////////////	
+// Count how many chickens a user has
+// TODO: Easier way to do this?
+	var x = count_chickens(userID);
+	var message = "`";
+// Append the chickens' stats to a message
+	for (var y = 0; y < x; y++)
+	message += "level : " + points[userID].chickens[y].level + 
+		"   HP : " + points[userID].chickens[y].max_hp +
+		"   Attack : " + points[userID].chickens[y].atk +
+			"   Heal : " + points[userID].chickens[y].heal + '\n';
+// Send the message
+	if (x == 0)
+		message += "You have no chickens!";
+	message += "`";
+	message_to(message, channelID);
+}
 
 function fight_player(){
 	
@@ -420,8 +454,9 @@ function chicken_mob_attack(userID, chicken, channelID){
 		message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
 			"Your chicken died!`", channelID);
 			points["enemy_chickens"].splice(fetch_chicken(userID), 1);
-			points[userID].splice(points[userID].lineup, 1);
+			points[userID].chickens.splice(points[userID].lineup, 1);
 			points[userID].lineup = -1;
+			points[userID].fight_status = 0;
 	}
 	else{
 		// chicken.current_hp += total_atk;
@@ -856,8 +891,19 @@ function help(channelID){
 // 
 // TODO: Complete help function
 // Must determine the full scope of the game first
-	var help = '!help				This message\n!ping				Pong!\n'
-	// help += '!channel				Get current channel ID'
+	var help = '`!help					This message.\n';
+	help += '!ping						Pong!\n';
+	help += '!channel					Display the current channel ID.\n';
+	help += '!take						Take the eggs!.\n';
+	help += '!eggs						Shows how many eggs you have.\n';
+	help += '!chickens 					Display your chickens.\n';
+	help += '!remove [#]				Remove the chicken #.\n';
+	help += '!fight [area]				Start a fight with the chosen option.\n';
+	help += '!attack					You choose to attack (in combat).\n';
+	help += '!heal						You choose to heal (in combat).\n';
+	help += '!lineup [#]				Choose the chicken that you want to fight with.\n';
+	help += '!hatch [rare/common/both]	Begin hatching or display how much time is left for your egg(s) to hatch.\n`';
+	
 // Send the message to the channel help was called form
 	message_to(help, channelID);
 };
