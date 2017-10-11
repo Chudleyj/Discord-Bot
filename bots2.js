@@ -39,7 +39,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 		args = args.splice(1);
 		var i = 0;
 		// var channels = bot.channel.find();
-		
 // Begin swtich		
 		switch(cmd) {
 // Simple ping to see if the bot is online
@@ -112,12 +111,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				check(user, userID);
 				if (count_chickens(userID) == 0)
 					message_to("`You has no chickens!`", channelID);
-				else if (count_chickens(userID) == 0)
+				else if (args[0] == '' || args[1] == '')
 					message_to("`Usage: !name [#] [name]`", channelID);
 				else if (args[0] > count_chickens(userID))
 					message_to("`You don't have that many chickens!`", channelID);
 				else{
-					points[userID].chickens[args[0] - 1].name = args[1];
+					points[userID].chickens[parseFloat(args[0]) - 1].name = args[1];
 					message_to("`" + args[1] + " has been named!`", channelID);
 				}
 				updateJSON();
@@ -195,23 +194,24 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 // Heal!
 			case 'heal': // 'heal'
 				check(user, userID);
+				heal(userID, channelID);
 // Not in combat
-				if (points[userID].fight_status == 0)
-					message_to("`You are not currently in combat.`", channelID);
+				// if (points[userID].fight_status == 0)
+					// message_to("`You are not currently in combat.`", channelID);
 // Mob fights
-				else if (points[userID].fight_status == 1){ // high/mid/low lands
-					heal(userID, channelID);
-				}
+				// else if (points[userID].fight_status == 1){ // high/mid/low lands
+					// heal(userID, channelID);
+				// }
 // TODO: Complete boss fight
-				else if (points[userID].fight_status == 2){ // boss
-					message_to("`This feature is not yet complete`", channelID);
-					points[userID].fight_status = 0;
-				}
+				// else if (points[userID].fight_status == 2){ // boss
+					// message_to("`This feature is not yet complete`", channelID);
+					// points[userID].fight_status = 0;
+				// }
 // TODO: Complete pvp battle
-				else if (points[userID].fight_status == 3){ // pvp
-					message_to("`This feature is not yet complete`", channelID);
-					points[userID].fight_status = 0;
-				}
+				// else if (points[userID].fight_status == 3){ // pvp
+					// message_to("`This feature is not yet complete`", channelID);
+					// points[userID].fight_status = 0;
+				// }
 			break;
 			
 // Case to hatch an egg
@@ -556,7 +556,15 @@ function attack(userID, channelID){
 };
 
 function heal(userID, channelID){
-	if (points[userID].chickens[points[userID].lineup].current_hp ==
+
+// Not in combat - heal all chickens
+	if (points[userID].fight_status == 0){
+		var num_chickens = count_chickens(userID);
+		for (var x = 0; x < num_chickens; x++)
+			points[userID].chickens[x].current_hp = points[userID].chickens[x].max_hp;
+		message_to("`Your chickens have been healed`", channelID);
+	}
+	else if (points[userID].chickens[points[userID].lineup].current_hp ==
 		points[userID].chickens[points[userID].lineup].max_hp)
 		message_to("`Cannot heal, chicken already at full health!`", channelID);
 	else{
@@ -964,6 +972,7 @@ function help(channelID){
 	help += '!fight [area]				Start a fight with the chosen option.\n';
 	help += '!attack					You choose to attack (in combat).\n';
 	help += '!heal						You choose to heal (in combat).\n';
+	help += '!heal						Heal all your chickens (outside combat).\n';
 	help += '!lineup [#]				Choose the chicken that you want to fight with.\n';
 	help += '!hatch [rare/common/both]	Begin hatching or display how much time is left for your egg(s) to hatch.\n`';
 	
