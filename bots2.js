@@ -106,19 +106,48 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					addEggs(user, userID, channelID);
 			break; // End 't'
 			
+// Name your chicken! ...why
+			case 'name': // 'name'
+// Make sure there are eggs to take
+				check(user, userID);
+				if (count_chickens(userID) == 0)
+					message_to("`You has no chickens!`", channelID);
+				else if (count_chickens(userID) == 0)
+					message_to("`Usage: !name [#] [name]`", channelID);
+				else if (args[0] > count_chickens(userID))
+					message_to("`You don't have that many chickens!`", channelID);
+				else{
+					points[userID].chickens[args[0] - 1].name = args[1];
+					message_to("`" + args[1] + " has been named!`", channelID);
+				}
+				updateJSON();
+			break;
+			
 // Fight - player, mobs, boss
 			case 'fight': // 'fight'
 				check(user, userID);
 				if (points[userID].lineup == -1)
 					message_to("`You need a lineup to fight." + 
 						"\nUse !lineup to begin`", channelID);
+				else if (points[userID].player_enemy_id != '' && (args[0] != 'accept' || args[0] != 'decline'))
+					message_to("`You cannot enter combat while you have a pending pvp invite.\n" + 
+						"Use '!fight accept' to accept or '!fight decline' to decline.`", channelID);
 				else if (points[userID].fight_status != 0)
 					message_to("`You are already in combat\n" + 
 						"Use '!attack' to attack or '!heal' to heal.`", channelID);
 				else 
 					switch (args[0]){
+						case 'accept':
+							message_to("`This feature is not implemented yet.`", channelID);
+							// fight_player('accept', userID, channelID);
+						break;
+						case 'decline':
+							message_to("`This feature is not implemented yet.`", channelID);
+							// fight_player('decline', userID, channelID);
+						break;
 						case 'player':
 							message_to("`This feature is not implemented yet.`", channelID);
+							// fight_player(args[1], userID, channelID);
 						break;
 						case 'boss':
 							message_to("`You are not high enough level to challenge a boss.`", channelID);
@@ -299,8 +328,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 
 function remove_chicken(userID, chicken_num, channelID){
 	var number_of_chickens = count_chickens(userID)
-	if (number_of_chickens >= 1 && chicken_num < number_of_chickens){
-		message_to("`" + chicken_num + ") level : " + points[userID].chickens[chicken_num - 1].level + 
+	if (number_of_chickens >= 1 && chicken_num <= number_of_chickens){
+		if (points[userID].chickens[chicken_num - 1].name != "")
+			message_to("`" + points[userID].chickens[chicken_num - 1].name + ", level : " + points[userID].chickens[chicken_num - 1].level + 
+					"   HP : " + points[userID].chickens[chicken_num - 1].current_hp +
+					"/" + points[userID].chickens[chicken_num - 1].max_hp +
+					"   Attack : " + points[userID].chickens[chicken_num - 1].atk +
+					"   Heal : " + points[userID].chickens[chicken_num - 1].heal + 
+					" has been removed!`", channelID);
+		else
+			message_to("`" + chicken_num + ") level : " + points[userID].chickens[chicken_num - 1].level + 
 				"   HP : " + points[userID].chickens[chicken_num - 1].current_hp +
 				"/" + points[userID].chickens[chicken_num - 1].max_hp +
 				"   Attack : " + points[userID].chickens[chicken_num - 1].atk +
@@ -323,10 +360,17 @@ function chicken_display(userID, channelID){
 	var message = "`";
 // Append the chickens' stats to a message
 	for (var y = 0; y < x; y++)
-	message += "level : " + points[userID].chickens[y].level + 
-		"   HP : " + points[userID].chickens[y].max_hp +
-		"   Attack : " + points[userID].chickens[y].atk +
-			"   Heal : " + points[userID].chickens[y].heal + '\n';
+		if (points[userID].chickens[y].name != "")
+			message += y + 1 + ") " + points[userID].chickens[y].name + 
+				", level : " + points[userID].chickens[y].level + 
+				"   HP : " + points[userID].chickens[y].max_hp +
+				"   Attack : " + points[userID].chickens[y].atk +
+				"   Heal : " + points[userID].chickens[y].heal + '\n';
+		else
+			message += y + 1 + ") level : " + points[userID].chickens[y].level + 
+				"   HP : " + points[userID].chickens[y].max_hp +
+				"   Attack : " + points[userID].chickens[y].atk +
+				"   Heal : " + points[userID].chickens[y].heal + '\n';
 // Send the message
 	if (x == 0)
 		message += "You have no chickens!";
@@ -334,8 +378,18 @@ function chicken_display(userID, channelID){
 	message_to(message, channelID);
 }
 
-function fight_player(){
-	
+function fight_player(player_accept_decline, userID, channelID){
+	switch (player_accept_decline){
+		case 'accept':
+			if (points[userID].fight_status.substring(0,1) != '5')
+				message_to("`You have no pending pvp invites!`", channelID);
+			else{
+				var player = points[userID].fight_status.substring(1);
+				points[userID].fight_status = '3' + player;
+				message_to("`You have accepted " + player + "'s pvp invite!`", channelID);
+			}
+			
+	}
 };
 
 function fight_mob(tier, userID, channelID){
@@ -451,12 +505,18 @@ function chicken_mob_attack(userID, chicken, channelID){
 		total_atk -= atk_mod;
 	points[userID].chickens[points[userID].lineup].current_hp -= total_atk;
 	if (points[userID].chickens[points[userID].lineup].current_hp <= 0){
-		message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
-			"Your chicken died!`", channelID);
-			points["enemy_chickens"].splice(fetch_chicken(userID), 1);
-			points[userID].chickens.splice(points[userID].lineup, 1);
-			points[userID].lineup = -1;
-			points[userID].fight_status = 0;
+		if (points[userID].chickens[points[userID].lineup].name != "")
+			message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
+				"Your chicken, " + 
+					points[userID].chickens[points[userID].lineup].name +
+					" has died!`", channelID);
+		else 
+			message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
+				"Your chicken died!`", channelID);
+		points["enemy_chickens"].splice(fetch_chicken(userID), 1);
+		points[userID].chickens.splice(points[userID].lineup, 1);
+		points[userID].lineup = -1;
+		points[userID].fight_status = 0;
 	}
 	else{
 		// chicken.current_hp += total_atk;
@@ -646,6 +706,7 @@ function rare_egg_hatched(userID){
 		"atk" : Math.round(Math.random() * (25 - 15)) + 15,
 		"heal" : Math.round(Math.random() * (25 - 15)) + 15,
 		"exp" : 100,
+		"name" : "",
 		"level" : 1
 	};
 	rare_chicken["current_hp"] = rare_chicken["max_hp"];
@@ -678,6 +739,7 @@ function common_egg_hatched(userID){
 		"atk" : Math.round(Math.random() * (20 - 7)) + 7,
 		"heal" : Math.round(Math.random() * (20 - 7)) + 7,
 		"exp" : 0,
+		"name" : "",
 		"level" : 1
 	};
 	common_chicken["current_hp"] = common_chicken["max_hp"];
@@ -828,7 +890,8 @@ function check(user, userID){
 		"gold" : 0, // current gold
 		"chickens":[], // chickens and chicken stats - define chicken objects and push
 		"eggs":{"common" : 1, "rare" : 1}, // number of eggs, common and rare
-		"hatch" : {"rare_end" : 0, "common_end" : 0} // used as an 'end timer' for hatching rare and common eggs
+		"hatch" : {"rare_end" : 0, "common_end" : 0}, // used as an 'end timer' for hatching rare and common eggs
+		"player_enemy_id" : ""
 		}
 // Update this information in the json
 	updateJSON();
