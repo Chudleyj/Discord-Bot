@@ -445,18 +445,15 @@ function fight_player(player_accept_decline, userID, channelID){
 // Locate player name called in database
 			var challenger = find_player_ID(player_accept_decline);
 // If the player name could not be found
-			if (challenger == undefined)
+			if (challenger === undefined)
 				message_to("`Could not find player " + player_accept_decline + "!`", channelID);
 // If the opponent has no lineup set
 // TODO: Option to change mid-fight exists so maybe change this?
 			// else if (challenger.lineup == -1)
 				// message_to("`Your opponent must have a chicken in their lineup!`", channelID);
-// If the opponent is already fighting or pending
-			else if (challenger.fight_status != '0')
-				message_to("`Your opponent is already engaged in battle!`", channelID);
-// Otherwise successful
-			else if (challenger.fight_status == 0){
-// Change opponent's fight status to pending invite
+// Successful
+			else if (challenger.fight_status === 0){
+				// Change opponent's fight status to pending invite
 				challenger.fight_status = 5;
 // Change opponent's player_enemy_id to caller's ID				
 				challenger.player_enemy_id = userID;
@@ -466,6 +463,11 @@ function fight_player(player_accept_decline, userID, channelID){
 // TODO: Notify the other player
 				message_to("`Invite sent successfully!`", channelID);
 			}
+// If the opponent is already fighting or pending
+			else
+				message_to("`Your opponent is already engaged in battle!`", channelID);
+			
+		break;
 	}
 };
 
