@@ -259,6 +259,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				message_to("Don't test me, " + user, channelID);
 			break; // End 'test'
 			
+// Display player's gold
+			case 'gold': // 'gold'
+				check(user, userID);
+				message_to("`You have " + points[userID].gold + " gold.`", channelID);
+			break; // End 'gold'
+			
 // Shop
 // TODO: What do we want to do here?
 			case 'buy': // 'buy'
