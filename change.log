@@ -1,0 +1,12 @@
+[10/11/17]
+Added:
+Functionality for fighting players (attack and heal)
+Functionality for accept and decline pvp invites
+
+Still need:
+Player fight challenge requests not working (line 458 seems buggy)
+Testing pvp fights (I need a friend)
+Chicken balancing
+Notifications for users upon egg hatching, pvp fights, other cases(?)
+Chicken betting for pvp fights
+Boss fights

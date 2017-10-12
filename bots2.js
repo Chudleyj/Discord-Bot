@@ -109,17 +109,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 			case 'name': // 'name'
 // Make sure there are eggs to take
 				check(user, userID);
-				if (count_chickens(userID) == 0)
-					message_to("`You has no chickens!`", channelID);
-				else if (args[0] == '' || args[1] == '')
-					message_to("`Usage: !name [#] [name]`", channelID);
-				else if (args[0] > count_chickens(userID))
-					message_to("`You don't have that many chickens!`", channelID);
-				else{
-					points[userID].chickens[parseFloat(args[0]) - 1].name = args[1];
-					message_to("`" + args[1] + " has been named!`", channelID);
-				}
-				updateJSON();
+				name(userID, args[0], args[1], channelID);
 			break;
 			
 // Fight - player, mobs, boss
@@ -137,16 +127,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				else 
 					switch (args[0]){
 						case 'accept':
-							message_to("`This feature is not implemented yet.`", channelID);
-							// fight_player('accept', userID, channelID);
+							// message_to("`This feature is not implemented yet.`", channelID);
+							fight_player('accept', userID, channelID);
 						break;
 						case 'decline':
-							message_to("`This feature is not implemented yet.`", channelID);
-							// fight_player('decline', userID, channelID);
+							// message_to("`This feature is not implemented yet.`", channelID);
+							fight_player('decline', userID, channelID);
 						break;
 						case 'player':
-							message_to("`This feature is not implemented yet.`", channelID);
-							// fight_player(args[1], userID, channelID);
+							// message_to("`This feature is not implemented yet.`", channelID);
+							fight_player(args[1], userID, channelID);
 						break;
 						case 'boss':
 							message_to("`You are not high enough level to challenge a boss.`", channelID);
@@ -195,23 +185,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 			case 'heal': // 'heal'
 				check(user, userID);
 				heal(userID, channelID);
-// Not in combat
-				// if (points[userID].fight_status == 0)
-					// message_to("`You are not currently in combat.`", channelID);
-// Mob fights
-				// else if (points[userID].fight_status == 1){ // high/mid/low lands
-					// heal(userID, channelID);
-				// }
-// TODO: Complete boss fight
-				// else if (points[userID].fight_status == 2){ // boss
-					// message_to("`This feature is not yet complete`", channelID);
-					// points[userID].fight_status = 0;
-				// }
-// TODO: Complete pvp battle
-				// else if (points[userID].fight_status == 3){ // pvp
-					// message_to("`This feature is not yet complete`", channelID);
-					// points[userID].fight_status = 0;
-				// }
 			break;
 			
 // Case to hatch an egg
@@ -312,23 +285,62 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 //		3 level 2s to unlock first boss, etc.
 
 
-	// if (points[userID].fight_status == 1){
-		// if (points[userID].chicken[points[userID].lineup].current_hp < 0){
-			// Splice((points[userID].lineup), 1);
-			// message_to("Your chicken died!", channel);
-		// }
-	// }
-	// else {
-		
-			
-		// points[userID].fight_status = 1;
-		// }
-	// }
-// };
+// FIGHT STATUS
+// 1 = mob
+// 2 = boss
+// 3 = NOT my turn
+// 4 = My turn
+// 5 = pending pvp
+function find_player_ID(user){
+	for (userID in points){
+		if (userID != "eggs" && userID != "time" && userID != "egg_time" && userID != "enemy_chickens")
+			console.log(points[userID].username);
+			if (points[userID].username == user){
+				return userID;
+			}
+	}
+};
+
+function name(userID, chicken_num, chicken_name, channelID){
+// Ability to name your chickens
+//
+// Ensure the player has chickens
+	if (count_chickens(userID) == 0)
+		message_to("`yOU hAs nO cHicKEnS!`", channelID);
+// If the user did not enter a number (call to isInteger) and string (I suppose this can be anything)
+	else if (chicken_num != isInteger(chicken_num) || chicken_name == undefined)
+		message_to("`Usage: !name [#] [name]`", channelID);
+// If the user chose a number higher than the number of chickens they have
+// Recall that the chicken display numbers starting at 1
+	else if (chicken_num > count_chickens(userID))
+		message_to("`You don't have that many chickens!`", channelID);
+// User tries to enter a number less than 1 (chicken[-1] doesn't exist!)
+	else if (chicken_num < 1)
+		message_to("`eRrOR tHaT'S noT rIGhT!1!`", channelID);
+// Change the name of the chicken
+	else{
+		// message_to("a" + chicken_num + "b" + chicken_name + "c", channelID);
+		points[userID].chickens[chicken_num - 1].name = chicken_name;
+		message_to("`" + chicken_name + " has been named!`", channelID);
+	}
+// Update this information in the json
+	updateJSON();
+};
+
+function isInteger(x){
+// Simple function to determine if a passed variable is an integer
+    return x % 1 === 0;
+};
 
 function remove_chicken(userID, chicken_num, channelID){
+// Gives players the option to remove a chicken
+//
+// Declare a variable for the number of chickens a user has
 	var number_of_chickens = count_chickens(userID)
+// Ensure the user has chickens and that the number they select is within the chicken count
 	if (number_of_chickens >= 1 && chicken_num <= number_of_chickens){
+// Way of determining if the name should be printed
+// Based on if name variable is blank
 		if (points[userID].chickens[chicken_num - 1].name != "")
 			message_to("`" + points[userID].chickens[chicken_num - 1].name + ", level : " + points[userID].chickens[chicken_num - 1].level + 
 					"   HP : " + points[userID].chickens[chicken_num - 1].current_hp +
@@ -336,6 +348,7 @@ function remove_chicken(userID, chicken_num, channelID){
 					"   Attack : " + points[userID].chickens[chicken_num - 1].atk +
 					"   Heal : " + points[userID].chickens[chicken_num - 1].heal + 
 					" has been removed!`", channelID);
+// Otherwise just print out the chicken's stats
 		else
 			message_to("`" + chicken_num + ") level : " + points[userID].chickens[chicken_num - 1].level + 
 				"   HP : " + points[userID].chickens[chicken_num - 1].current_hp +
@@ -343,20 +356,26 @@ function remove_chicken(userID, chicken_num, channelID){
 				"   Attack : " + points[userID].chickens[chicken_num - 1].atk +
 				"   Heal : " + points[userID].chickens[chicken_num - 1].heal + '\n' + 
 				"Has been removed!`", channelID);
+// If the chicken was their lineup chicken, reset their lineup to -1
 		if  (points[userID].lineup == chicken_num - 1)
 			points[userID].lineup = -1;
+// Remove the chicken from the player's array
 		points[userID].chickens.splice(chicken_num - 1, 1);
 	}
+// Something else went wrong
 	else 
 		message_to("That chicken cannot be removed!", channelID);
+// Update this information in the json
 	updateJSON();
 };
 
 function chicken_display(userID, channelID){
-///////////////////////////////////////////	
+// Display the chickens a user has
+//
 // Count how many chickens a user has
 // TODO: Easier way to do this?
 	var x = count_chickens(userID);
+// Begin the message
 	var message = "`";
 // Append the chickens' stats to a message
 	for (var y = 0; y < x; y++)
@@ -371,43 +390,112 @@ function chicken_display(userID, channelID){
 				"   HP : " + points[userID].chickens[y].max_hp +
 				"   Attack : " + points[userID].chickens[y].atk +
 				"   Heal : " + points[userID].chickens[y].heal + '\n';
-// Send the message
+// If the player has no chickens
 	if (x == 0)
 		message += "You have no chickens!";
+// Terminate the message
 	message += "`";
+// Send the message
 	message_to(message, channelID);
-}
+};
 
 function fight_player(player_accept_decline, userID, channelID){
+// Function to control how a player accepts/declines or invites players to pvp
+// TODO: Finish function
+// TODO: Option to bet money?!
+// Switch statement for option passed (accept/decline/player)
 	switch (player_accept_decline){
+// Case Accept
 		case 'accept':
-			if (points[userID].fight_status.substring(0,1) != '5')
+// Ensure pending request
+			if (points[userID].player_enemy_id == '')
+				message_to("`You have no pending pvp invites!`", channelID);
+// Accept the invite
+			else{
+// Set a variable equal to the userID of the pvp initializer
+				var challenger = points[points[userID].player_enemy_id].username;
+// Update fight status
+// Accepter gets to go first (4)
+// Challenger goes second (3)
+				points[userID].fight_status = 4;
+				points[challenger].fight_status = 3;
+// Send a message
+// TODO: Notify both players upon accepting
+				message_to("`You have accepted " + challenger + "'s pvp invite!`", channelID);
+			}
+		break;
+// Case Decline
+		case 'decline':
+// Ensure pending request
+			if (points[userID].player_enemy_id == '')
 				message_to("`You have no pending pvp invites!`", channelID);
 			else{
-				var player = points[userID].fight_status.substring(1);
-				points[userID].fight_status = '3' + player;
-				message_to("`You have accepted " + player + "'s pvp invite!`", channelID);
+// Set a variable equal to the userID of the pvp initializer
+				var challenger = points[points[userID].player_enemy_id].username;
+// Update status to 0 (not in combat) for both
+				points[userID].fight_status = 0;
+				points[challenger].fight_status = 0;
+// Send a message
+// TODO: Notify both players upon declining
+				message_to("`You have declined " + challenger + "'s pvp invite!`", channelID);
 			}
-			
+		break;
+// Declare new PVP request
+		default:
+// Locate player name called in database
+			var challenger = find_player_ID(player_accept_decline);
+// If the player name could not be found
+			if (challenger == undefined)
+				message_to("`Could not find player " + player_accept_decline + "!`", channelID);
+// If the opponent has no lineup set
+// TODO: Option to change mid-fight exists so maybe change this?
+			// else if (challenger.lineup == -1)
+				// message_to("`Your opponent must have a chicken in their lineup!`", channelID);
+// If the opponent is already fighting or pending
+			else if (challenger.fight_status != '0')
+				message_to("`Your opponent is already engaged in battle!`", channelID);
+// Otherwise successful
+			else if (challenger.fight_status == 0){
+// Change opponent's fight status to pending invite
+				challenger.fight_status = 5;
+// Change opponent's player_enemy_id to caller's ID				
+				challenger.player_enemy_id = userID;
+// Change own fight status to pending
+				points[userID].fight_status = 5;
+// Send confirmation
+// TODO: Notify the other player
+				message_to("`Invite sent successfully!`", channelID);
+			}
 	}
 };
 
 function fight_mob(tier, userID, channelID){
+// Creates a chicken to fight!
+//
+// Switch statement for the teir of chicken
 	switch (tier){
+// Low tier
 		case 'low':
+// Create a chicken object
 			var chicken = {
-				"max_hp" : Math.round(Math.random() * (50 - 30)) + 30,
-				"current_hp" : 0,
-				"atk" : Math.round(Math.random() * (10 - 8)) + 8,
-				"heal" : Math.round(Math.random() * (9 - 6)) + 6,
-				"exp" : Math.round(Math.random() * (80 - 50)) + 50,
-				"gold" : Math.round(Math.random() * (5 - 1)) + 1,
-				"fighter" : userID
+				"max_hp" : Math.round(Math.random() * (50 - 30)) + 30, // Total max hp
+				"current_hp" : 0, // The current HP the chicken has
+				"atk" : Math.round(Math.random() * (10 - 8)) + 8, // Base attack power
+				"heal" : Math.round(Math.random() * (9 - 6)) + 6, // Base heal power
+				"exp" : Math.round(Math.random() * (80 - 50)) + 50, // Amount of experience granted upon death
+				"gold" : Math.round(Math.random() * (5 - 1)) + 1, // Amount of gold granted upon death
+				"fighter" : userID // The userID of who the chicken is fighting (Each chicken only has 1 opponent)
 			};
+// Set the current hp equal to the max
 			chicken.current_hp = chicken.max_hp;
+// Add the chicken to the enemy chicken array
 			points["enemy_chickens"].push(chicken);
+// Change the fight status of the player to engaged in a mob fight
 			points[userID].fight_status = 1;
-		break;
+		break; // End low tier
+		
+// Mid tier
+// Same as low but different random numbers
 		case 'mid':
 			var chicken = {
 				"max_hp" : Math.round(Math.random() * (80 - 60)) + 60,
@@ -421,7 +509,10 @@ function fight_mob(tier, userID, channelID){
 			chicken.current_hp = chicken.max_hp;
 			points["enemy_chickens"].push(chicken);
 			points[userID].fight_status = 1;
-		break;
+		break; // End mid tier
+		
+// High tier
+// Same as mid and low tier but different random numbers
 		case 'high':
 			var chicken = {
 				"max_hp" : Math.round(Math.random() * (150 - 100)) + 100,
@@ -435,47 +526,73 @@ function fight_mob(tier, userID, channelID){
 			chicken.current_hp = chicken.max_hp;
 			points["enemy_chickens"].push(chicken);
 			points[userID].fight_status = 1;
-		break;
+		break; // End high tier
+		
+// Something went wrong
 		default:
 			message_to("`Oops, something went wrong!`");
 		break;
 	}
+// Update this information in the JSON
 	updateJSON();
+// A wild chicken! message
 	message_to("`A wild chicken appears!`", channelID);
 };
 	
 function fetch_chicken(userID){
+// Find which chicken the player is fighting
+// Should only be called when there is 100% chance the user is fighting a chicken
+//
+// Count how many enemy chickens exist
 	var x = count_enemy_chickens("enemy_chickens");
+// Loop through the enemy chickens looking for the fighter to match the userID
 	for (var y = 0; y < x; y++)
-		if (points["enemy_chickens"][y].fighter == userID){
-			// console.log(points["enemy_chickens"]);
+		if (points["enemy_chickens"][y].fighter == userID)
+// Return the index of the "enemy_chickens" array where the chicken exists			
 			return y;
-		}
-	// return -1;
 };
 
-function check_level_up(userID){
+function check_level_up(userID, channelID){
+// Determine if the chicken can level up
+//
+// If the chicken's experience is at 1000 * the level
 	if (points[userID].chickens[points[userID].lineup].exp >= 
 			(1000 * points[userID].chickens[points[userID].lineup].level))
-			level_up(userID);
+// Call the level up function
+			level_up(userID, channelID);
 };
 
 function level_up(userID, channelID){
+// Function for leveling up a user's chicken
+//
+// Declare a chicken variable equal to the user's lineup chicken
+// This should be the only chicken eligible to level up because it was engaged in combat when this function was called
 	var chicken = points[userID].chickens[points[userID].lineup];
+// Increase stats of HP, Heal, and attack
 	chicken.max_hp +=  Math.round(Math.random() * (((chicken.level + 1) * 8) - 10)) + 10;
 	chicken.heal +=  Math.round(Math.random() * (((chicken.level + 1) * 6) - 6)) + 6;
 	chicken.atk +=  Math.round(Math.random() * (((chicken.level + 1) * 6) - 6)) + 6;
+// Reset the current hp equal to the max HP
 	chicken.current_hp = chicken.max_hp;
+// Reset the chicken's Experience to 0
 	chicken.exp -= (1000 * chicken.level);
+// Increase the chicken's level
 	chicken.level ++;
+// Send a message confirming the chicken leveled up
 	message_to("`Your chicken leveled up!\n" + 
 			"Use '!chickens' to view your chicken list`", channelID);
+// Update this information in the JSON
 	updateJSON();
 };
 
 function chicken_combat(userID, channelID){
+// How mob enemy chicken engages in combat
+//
+// TODO: Balancing
+// Fetch the chicken the user is fighting
 	var chicken_location = fetch_chicken(userID);
 	var chicken = points["enemy_chickens"][chicken_location];
+// Very simplified function for determining attack or heal on behalf of the enemy chicken
 	if (chicken.current_hp < 20 || (chicken.current_hp / chicken.max_hp) < .3)
 		chicken_mob_heal(chicken, channelID);
 	else
@@ -483,19 +600,30 @@ function chicken_combat(userID, channelID){
 };
 
 function chicken_mob_heal(chicken, channelID){
+// Function for the enemy mob chicken to heal
+//
+// Declares random plus or minus to add to the base heal ability of the chicken
 	var plus_minus = Math.random() >= 0.5;
+// The random numbers are based on the gold drop instead of chicken level or tier (as in player attacks/heals)
 	var heal_mod = Math.round(Math.random() * (chicken.gold + 2) - 2) + 2
 	var total_heal = chicken.heal
 	if (plus_minus)
 		total_heal += heal_mod;
 	else
 		total_heal -= heal_mod;
+// Heal the chicken
 	chicken.current_hp += total_heal;
+// Message that the enemy chicken healed
 	message_to("`Enemy chicken healed " + total_heal + " HP`", channelID);
+// Update this information in the JSON
 	updateJSON();
 };
 
 function chicken_mob_attack(userID, chicken, channelID){
+// Function for the enemy mob chicken to attack
+//
+// Declares the amount of damage the chicken will do
+// Same formula as the chicken mob heal function
 	var plus_minus = Math.random() >= 0.5;
 	var atk_mod = Math.round(Math.random() * (chicken.gold + 2) - 2) + 2
 	var total_atk = chicken.atk
@@ -503,87 +631,196 @@ function chicken_mob_attack(userID, chicken, channelID){
 		total_atk += atk_mod;
 	else
 		total_atk -= atk_mod;
+// Subtracts the damage from the user's chicken hp
 	points[userID].chickens[points[userID].lineup].current_hp -= total_atk;
+// Checks if the user's chicken is dead
 	if (points[userID].chickens[points[userID].lineup].current_hp <= 0){
+// Simple functionality to determine if the chicken had a name - It's nice to be remembered when you die :(
 		if (points[userID].chickens[points[userID].lineup].name != "")
 			message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
 				"Your chicken, " + 
 					points[userID].chickens[points[userID].lineup].name +
 					" has died!`", channelID);
+// The chicken didn't have a name - What's in a name
 		else 
 			message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
 				"Your chicken died!`", channelID);
+// Removes the enemy chicken from the enemy chickens array
 		points["enemy_chickens"].splice(fetch_chicken(userID), 1);
+// Removes the player's chicken from the player's chicken array
 		points[userID].chickens.splice(points[userID].lineup, 1);
+// Resets the player's lineup
 		points[userID].lineup = -1;
+// Resets the player's fight status
 		points[userID].fight_status = 0;
 	}
+// The chicken didn't die
 	else{
-		// chicken.current_hp += total_atk;
+// Display how much HP the user's chicken has left as well as how much the enemy chicken hit for
 		message_to("`Enemy chicken hit for " + total_atk + " damage.\n" + 
 				"Your chicken is at " + points[userID].chickens[points[userID].lineup].current_hp + " HP`", channelID);
 	}
+// Update this information in the JSON
 	updateJSON();
 };
 
 function attack(userID, channelID){
-	var chicken_location = fetch_chicken(userID);
-	var chicken = points["enemy_chickens"][chicken_location];
-	var plus_minus = Math.random() >= 0.5;
-	var atk_mod = Math.round(Math.random() * (points[userID].chickens[points[userID].lineup].level + 2) - 1) + 1
-	var total_atk = points[userID].chickens[points[userID].lineup].atk
-	if (plus_minus)
-		total_atk += atk_mod;
-	else
-		total_atk -= atk_mod;
-	console.log(plus_minus);
-	chicken.current_hp -= total_atk;
-	if (chicken.current_hp <= 0){
-		points[userID].gold += chicken.gold;
-		points[userID].chickens[points[userID].lineup].exp += chicken.exp;
-		check_level_up(userID, channelID);
-		points[userID].fight_status = 0;
-		message_to("`Enemy chicken took " + total_atk + " damage and was defeated!\n" + 
-			"Your chicken gained " + chicken.exp + " experience.\n" + 
-			"You gained " + chicken.gold + " gold.`", channelID);
-		points["enemy_chickens"].splice(chicken_location, 1);
-	}
-	else{
-		chicken_combat(userID, channelID);
-		message_to("`Enemy chicken took " + total_atk + " damage!`", channelID);
-	}
+// Player chose to attack!
+//
+// TODO: Combine this to make it shorter
+	if (points[userID].fight_status == 1){ // Mob fight
+// Find the location of the chicken the player is fighting
+		var chicken_location = fetch_chicken(userID);
+		var chicken = points["enemy_chickens"][chicken_location];
+// Declare a random 1 or 0 for attack modifier
+		var plus_minus = Math.random() >= 0.5;
+// Create an attack modifier
+		var atk_mod = Math.round(Math.random() * (points[userID].chickens[points[userID].lineup].level + 2) - 1) + 1
+// Declare total_atk to be the current attack of player's chicken
+		var total_atk = points[userID].chickens[points[userID].lineup].atk
+// Randomize (plus_minus) the attack modifier possitive or negative
+		if (plus_minus)
+			total_atk += atk_mod;
+		else
+			total_atk -= atk_mod;
+// Deduct the health from the enemy chicken
+		chicken.current_hp -= total_atk;
+// If the chicken dies
+		if (chicken.current_hp <= 0){
+// Give the player gold
+			points[userID].gold += chicken.gold;
+// Give the chicken experience
+			points[userID].chickens[points[userID].lineup].exp += chicken.exp;
+// Check if the chicken should level up
+			check_level_up(userID, channelID);
+// Clear the fight status of the player
+			points[userID].fight_status = 0;
+// Send a message saying the player won
+			message_to("`Enemy chicken took " + total_atk + " damage and was defeated!\n" + 
+				"Your chicken gained " + chicken.exp + " experience.\n" + 
+				"You gained " + chicken.gold + " gold.`", channelID);
+			points["enemy_chickens"].splice(chicken_location, 1);
+		}
+// If the chicken didn't die
+		else{
+// Call how much damage was dealt
+			message_to("`Enemy chicken took " + total_atk + " damage!`", channelID);
+// Begin the enemy chicken's combat
+			chicken_combat(userID, channelID);
+		}
+	} // End Mob fight
+	
+// If the player is involved in a PVP fight
+	else if (points[userID].fight_status == 4){ // PVP
+// Find the opponent's ID and chicken
+		var enemy_player = points[userID].player_enemy_id;
+		var enemy_chicken = points[enemy_player].chickens[points[enemy_player].lineup];
+// Declare the same attack as with Mob fights
+		var plus_minus = Math.random() >= 0.5;
+		var atk_mod = Math.round(Math.random() * (points[userID].chickens[points[userID].lineup].level + 2) - 1) + 1
+		var total_atk = points[userID].chickens[points[userID].lineup].atk
+		if (plus_minus)
+			total_atk += atk_mod;
+		else
+			total_atk -= atk_mod;
+		enemy_chicken.current_hp -= total_atk;
+// If the chicken's HP drops to 0 or less
+		if (enemy_chicken.current_hp <= 0){
+// Do not give gold
+// TODO: Place bets as gold reward for pvp matches
+			// points[userID].gold += chicken.gold;
+// Give the chicken experince
+			points[userID].chickens[points[userID].lineup].exp += chicken.exp;
+// Check if the chicken leveled up
+			check_level_up(userID, channelID);
+// Clear the fight status of both players back to 0
+			points[userID].fight_status = 0;
+			points[enemy_player].fight_status = 0;
+// Send a message
+			message_to("`Enemy chicken took " + total_atk + " damage and was defeated!\n" + 
+				"Your chicken gained " + chicken.exp + " experience.\n", channelID);
+// Remove the chicken from the enemy chicken list
+// TODO: Should the chicken die?
+			points[enemy_player].splice(enemy_chicken, 1);
+		}
+// If the chicken didn't die
+		else{
+// Call how much damage was dealt
+			message_to("`Enemy chicken took " + total_atk + " damage!`", channelID);
+// Set the player's fight status to 3 (NOT YOUR TURN)
+			points[userID].fight_status = 3;
+// Sets the opponent's fight status to 4 (Your turn)
+// TODO: Notify opponent
+			points[enemy_player] = 4;
+		}
+	} // End PVP
+	
+// Update this information in the JSON
 		updateJSON();	
 };
 
 function heal(userID, channelID){
-
+// Function to heal all chickens (out of combat) or the chicken in the user's lineup (in combat)
+//
+// TODO: Finish comments for this function
 // Not in combat - heal all chickens
-	if (points[userID].fight_status == 0){
+	if (points[userID].fight_status == 0){ // Out of combat
 		var num_chickens = count_chickens(userID);
 		for (var x = 0; x < num_chickens; x++)
 			points[userID].chickens[x].current_hp = points[userID].chickens[x].max_hp;
 		message_to("`Your chickens have been healed`", channelID);
 	}
-	else if (points[userID].chickens[points[userID].lineup].current_hp ==
-		points[userID].chickens[points[userID].lineup].max_hp)
-		message_to("`Cannot heal, chicken already at full health!`", channelID);
-	else{
-		var plus_minus = Math.random() >= 0.5;
-		var heal_mod = Math.round(Math.random() * (points[userID].chickens[points[userID].lineup].level + 2) - 1) + 1
-		var total_heal = points[userID].chickens[points[userID].lineup].heal
-		if (plus_minus)
-			total_heal += heal_mod;
-		else
-			total_heal -= heal_mod;
-		points[userID].chickens[points[userID].lineup].current_hp += total_heal;
-		message_to("`Chicken restored " + total_heal + " HP`", channelID);
-		if (points[userID].chickens[points[userID].lineup].current_hp >
-			points[userID].chickens[points[userID].lineup].max_hp){
-			points[userID].chickens[points[userID].lineup].current_hp = points[userID].chickens[points[userID].lineup].max_hp;
-			message_to("`Chicken health at max!`", channelID);
-			}
-		chicken_combat(userID, channelID);
-	}
+	else if (points[userID].fight_status == 1){ // Mob fight
+		if (points[userID].chickens[points[userID].lineup].current_hp ==
+			points[userID].chickens[points[userID].lineup].max_hp)
+			message_to("`Cannot heal, chicken already at full health!`", channelID);
+		else{
+			var plus_minus = Math.random() >= 0.5;
+			var heal_mod = Math.round(Math.random() * (points[userID].chickens[points[userID].lineup].level + 2) - 1) + 1
+			var total_heal = points[userID].chickens[points[userID].lineup].heal
+			if (plus_minus)
+				total_heal += heal_mod;
+			else
+				total_heal -= heal_mod;
+			points[userID].chickens[points[userID].lineup].current_hp += total_heal;
+			message_to("`Chicken restored " + total_heal + " HP`", channelID);
+			if (points[userID].chickens[points[userID].lineup].current_hp >
+				points[userID].chickens[points[userID].lineup].max_hp){
+				points[userID].chickens[points[userID].lineup].current_hp = points[userID].chickens[points[userID].lineup].max_hp;
+				message_to("`Chicken health at max!`", channelID);
+				}
+			chicken_combat(userID, channelID);
+		}
+	} // End Mob Fight Heal
+	
+	else if (points[userID].fight_status == 4){ // PVP Fight
+		if (points[userID].chickens[points[userID].lineup].current_hp ==
+			points[userID].chickens[points[userID].lineup].max_hp)
+			message_to("`Cannot heal, chicken already at full health!`", channelID);
+		else{
+			var plus_minus = Math.random() >= 0.5;
+			var heal_mod = Math.round(Math.random() * (points[userID].chickens[points[userID].lineup].level + 2) - 1) + 1
+			var total_heal = points[userID].chickens[points[userID].lineup].heal
+			if (plus_minus)
+				total_heal += heal_mod;
+			else
+				total_heal -= heal_mod;
+			points[userID].chickens[points[userID].lineup].current_hp += total_heal;
+			message_to("`Chicken restored " + total_heal + " HP`", channelID);
+			if (points[userID].chickens[points[userID].lineup].current_hp >
+				points[userID].chickens[points[userID].lineup].max_hp){
+				points[userID].chickens[points[userID].lineup].current_hp = points[userID].chickens[points[userID].lineup].max_hp;
+				message_to("`Chicken health at max!`", channelID);
+				}
+// Change player fight status to match whose turn it is
+			points[userID].fight_status = 3;
+			points[points[userID].player_enemy_id].fight_status = 4;
+		}
+	} // End PVP Heal
+	else if (points[userID].fight_status == 3) // PVP Fight
+		message_to("`It's not your turn!`", channelID);
+	
+	updateJSON();
 };
 
 function fight_boss(){
@@ -899,7 +1136,7 @@ function check(user, userID){
 		"chickens":[], // chickens and chicken stats - define chicken objects and push
 		"eggs":{"common" : 1, "rare" : 1}, // number of eggs, common and rare
 		"hatch" : {"rare_end" : 0, "common_end" : 0}, // used as an 'end timer' for hatching rare and common eggs
-		"player_enemy_id" : ""
+		"player_enemy_id" : "" // log if there are pending/current pvp battles associated with this player
 		}
 // Update this information in the json
 	updateJSON();
@@ -914,16 +1151,16 @@ function addEggs(user, userID, channelID){
 	points[userID].eggs.common += points["eggs"].common;
 	points[userID].eggs.rare += points["eggs"].rare;
 // Define the message - notify how many of each egg has been obtained
-	var m = user;
+	var m = "`" + user;
 // Variable to determine how the common eggs should print depending on if
 //  There are rare eggs or not
 	var claimed = 0;
 	if (points["eggs"].rare == 1){
-		m += ` claimed a rare egg`;
+		m += " claimed a rare egg";
 		claimed = 1;
 	}
 	else if (points["eggs"].rare > 1){
-		m += ` claimed ${points["eggs"].rare} rare eggs`;
+		m += " claimed " + points["eggs"].rare + " rare eggs";
 		claimed = 1;
 	}
 	else{
@@ -931,16 +1168,17 @@ function addEggs(user, userID, channelID){
 	}
 	if (claimed == 1 && points["eggs"].common != 0){
 		if (points["eggs"].common == 1)
-			m += ` and a common egg!`;
+			m += " and a common egg!";
 		else if (points["eggs"].common > 1)
-			m += ` and ${points["eggs"].common} common eggs!`;
+			m += " and " + points["eggs"].common + " common eggs!";
 	}
 	else{
 		if (points["eggs"].common == 1)
-			m += ` claimed a common egg.`;
+			m += " claimed a common egg.";
 		else if (points["eggs"].common > 1)
-			m += ` claimed ${points["eggs"].common} common eggs!`;
+			m += " claimed " + points["eggs"].common + " common eggs!";
 	}
+	m += "`";
 // Send the final message to the channel
 	bot.sendMessage({to: channelID, message: m});
 // Reset the number of rare and common eggs back to 0
