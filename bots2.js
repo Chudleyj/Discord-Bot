@@ -294,7 +294,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 function find_player_ID(user){
 	for (userID in points){
 		if (userID != "eggs" && userID != "time" && userID != "egg_time" && userID != "enemy_chickens")
-			console.log(points[userID].username);
+			// console.log(points[userID].username);
 			if (points[userID].username == user){
 				return userID;
 			}
@@ -452,11 +452,11 @@ function fight_player(player_accept_decline, userID, channelID){
 			// else if (challenger.lineup == -1)
 				// message_to("`Your opponent must have a chicken in their lineup!`", channelID);
 // Successful
-			else if (challenger.fight_status === 0){
+			else if (points[challenger].fight_status === 0){
 				// Change opponent's fight status to pending invite
-				challenger.fight_status = 5;
+				points[challenger].fight_status = 5;
 // Change opponent's player_enemy_id to caller's ID				
-				challenger.player_enemy_id = userID;
+				points[challenger].player_enemy_id = userID;
 // Change own fight status to pending
 				points[userID].fight_status = 5;
 // Send confirmation
@@ -466,7 +466,7 @@ function fight_player(player_accept_decline, userID, channelID){
 // If the opponent is already fighting or pending
 			else
 				message_to("`Your opponent is already engaged in battle!`", channelID);
-			
+			console.log(challenger.fight_status);
 		break;
 	}
 };
@@ -756,7 +756,8 @@ function attack(userID, channelID){
 			points[enemy_player] = 4;
 		}
 	} // End PVP
-	
+	else
+		message_to("`Hmm, something's not right.`", channelID);
 // Update this information in the JSON
 		updateJSON();	
 };
