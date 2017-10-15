@@ -122,22 +122,22 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				else if (points[userID].player_enemy_id != '' && (args[0] != 'accept' && args[0] != 'decline'))
 					message_to("`You cannot enter combat while you have a pending pvp invite.\n" + 
 						"Use '!fight accept' to accept or '!fight decline' to decline.`", channelID);
-				else if (points[userID].fight_status == 0 || points[userID].fight_status == 3 || points[userID].fight_status == 4)
+				else if (points[userID].fight_status == 1 || points[userID].fight_status == 3 || points[userID].fight_status == 4)
 					message_to("`You are already in combat\n" + 
 						"Use '!attack' to attack or '!heal' to heal.`", channelID);
 				else 
 					switch (args[0]){
 						case 'accept':
-							message_to("`This feature is not implemented yet.`", channelID);
-							// fight_player('accept', userID, channelID);
+							// message_to("`This feature is not implemented yet.`", channelID);
+							fight_player('accept', userID, channelID);
 						break;
 						case 'decline':
-							message_to("`This feature is not implemented yet.`", channelID);
-							// fight_player('decline', userID, channelID);
+							// message_to("`This feature is not implemented yet.`", channelID);
+							fight_player('decline', userID, channelID);
 						break;
 						case 'player':
-							message_to("`This feature is not implemented yet.`", channelID);
-							// fight_player(args[1], userID, channelID);
+							// message_to("`This feature is not implemented yet.`", channelID);
+							fight_player(args[1], userID, channelID);
 						break;
 						case 'boss':
 							message_to("`You are not high enough level to challenge a boss.`", channelID);
@@ -302,6 +302,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 // 3 = NOT my turn
 // 4 = My turn
 // 5 = pending pvp
+// 6 = outgoing pending
+
 function find_player_ID(user){
 	for (userID in points){
 		if (userID != "eggs" && userID != "time" && userID != "egg_time" && userID != "enemy_chickens")
@@ -425,6 +427,10 @@ function fight_player(player_accept_decline, userID, channelID){
 // Ensure pending request
 			if (points[userID].player_enemy_id == '')
 				message_to("`You have no pending pvp invites!`", channelID);
+// If their invite is already outgoing (fight_status 6)
+			else if (points[userID].fight_status == 6)
+				message_to("`You already have an outgoing pvp invite!\n"+
+						"You may use '!fight player decline' to cancle this request.`", channelID);
 // Accept the invite
 			else{
 // Set a variable equal to the userID of the pvp initializer
@@ -434,6 +440,7 @@ function fight_player(player_accept_decline, userID, channelID){
 // Challenger goes second (3)
 				points[userID].fight_status = 4;
 				points[challenger].fight_status = 3;
+				points[userID].player_enemy_id = challenger;
 // Send a message
 // TODO: Notify both players upon accepting
 				message_to("`You have accepted " + points[challenger].username + "'s pvp invite!`", channelID);
@@ -447,13 +454,18 @@ function fight_player(player_accept_decline, userID, channelID){
 			else{
 // Set a variable equal to the userID of the pvp initializer
 				var challenger = points[userID].player_enemy_id;
+// Canceling thier own request
+				if (points[userID].fight_status == 6)
+					message_to("`Your outgoing fight request has been cancled!`", channelID);
+// Otherwise, send a message
+// TODO: Notify both players upon declining
+				else 
+					message_to("`You have declined " + points[challenger].username + "'s pvp invite!`", channelID);
 // Update status to 0 (not in combat) for both
 				points[userID].fight_status = 0;
 				points[challenger].fight_status = 0;
-				points[challenger].player_enemy_id = userID;
-// Send a message
-// TODO: Notify both players upon declining
-				message_to("`You have declined " + points[challenger].username + "'s pvp invite!`", channelID);
+				points[challenger].player_enemy_id = '';
+				points[userID].player_enemy_id = '';
 			}
 		break;
 // Declare new PVP request
@@ -473,8 +485,10 @@ function fight_player(player_accept_decline, userID, channelID){
 				points[challenger].fight_status = 5;
 // Change opponent's player_enemy_id to caller's ID				
 				points[challenger].player_enemy_id = userID;
+// Change caller's player_enemy_id to opponent's ID				
+				points[userID].player_enemy_id = challenger;
 // Change own fight status to pending
-				points[userID].fight_status = 5;
+				points[userID].fight_status = 6;
 // Send confirmation
 // TODO: Notify the other player
 				message_to("`Invite sent successfully!`", channelID);
@@ -556,7 +570,7 @@ function fight_mob(tier, userID, channelID){
 // A wild chicken! message
 	message_to("`A wild chicken appears!`", channelID);
 };
-	
+
 function fetch_chicken(userID){
 // Find which chicken the player is fighting
 // Should only be called when there is 100% chance the user is fighting a chicken
@@ -748,7 +762,7 @@ function attack(userID, channelID){
 // TODO: Place bets as gold reward for pvp matches
 			// points[userID].gold += chicken.gold;
 // Give the chicken experince
-			points[userID].chickens[points[userID].lineup].exp += chicken.exp;
+			points[userID].chickens[points[userID].lineup].exp += enemy_chicken.exp;
 // Check if the chicken leveled up
 			check_level_up(userID, channelID);
 // Clear the fight status of both players back to 0
@@ -759,10 +773,10 @@ function attack(userID, channelID){
 			points[enemy_player].player_enemy_id = '';
 // Send a message
 			message_to("`Enemy chicken took " + total_atk + " damage and was defeated!\n" + 
-				"Your chicken gained " + chicken.exp + " experience.\n", channelID);
+				"Your chicken gained " + enemy_chicken.exp + " experience.\n", channelID);
 // Remove the chicken from the enemy chicken list
 // TODO: Should the chicken die?
-			points[enemy_player].splice(enemy_chicken, 1);
+			points[enemy_player].chickens.splice(enemy_chicken, 1);
 		}
 // If the chicken didn't die
 		else{
@@ -770,7 +784,7 @@ function attack(userID, channelID){
 			points[userID].fight_status = 3;
 // Sets the opponent's fight status to 4 (Your turn)
 // TODO: Notify opponent
-			points[enemy_player] = 4;
+			points[enemy_player].fight_status = 4;
 // Call how much damage was dealt
 			message_to("`Enemy chicken took " + total_atk + " damage!`", channelID);
 
