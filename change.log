@@ -1,3 +1,7 @@
+[10/15/17]
+Fixed naming logic error
+Fixed chicken display to cap at 30 chickens and display how many aren't being shown
+
 [10/12/17]
 Fixed the PVP request system
 Sill need testing on this feature
