@@ -3,6 +3,7 @@ var logger = require('winston');
 var auth = require('./auth.json');
 const fs = require("fs");
 // Configure logger settings
+//bot.channels[channelID].guild_id ------- THIS WORKS
 logger.remove(logger.transports.Console);
 logger.add(logger.transports.Console, {
 	colorize: true
@@ -118,25 +119,25 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				if (points[userID].lineup == -1)
 					message_to("`You need a lineup to fight." + 
 						"\nUse !lineup to begin`", channelID);
-				else if (points[userID].player_enemy_id != '' && (args[0] != 'accept' || args[0] != 'decline'))
+				else if (points[userID].player_enemy_id != '' && (args[0] != 'accept' && args[0] != 'decline'))
 					message_to("`You cannot enter combat while you have a pending pvp invite.\n" + 
 						"Use '!fight accept' to accept or '!fight decline' to decline.`", channelID);
-				else if (points[userID].fight_status != 0)
+				else if (points[userID].fight_status == 0 || points[userID].fight_status == 3 || points[userID].fight_status == 4)
 					message_to("`You are already in combat\n" + 
 						"Use '!attack' to attack or '!heal' to heal.`", channelID);
 				else 
 					switch (args[0]){
 						case 'accept':
-							// message_to("`This feature is not implemented yet.`", channelID);
-							fight_player('accept', userID, channelID);
+							message_to("`This feature is not implemented yet.`", channelID);
+							// fight_player('accept', userID, channelID);
 						break;
 						case 'decline':
-							// message_to("`This feature is not implemented yet.`", channelID);
-							fight_player('decline', userID, channelID);
+							message_to("`This feature is not implemented yet.`", channelID);
+							// fight_player('decline', userID, channelID);
 						break;
 						case 'player':
-							// message_to("`This feature is not implemented yet.`", channelID);
-							fight_player(args[1], userID, channelID);
+							message_to("`This feature is not implemented yet.`", channelID);
+							// fight_player(args[1], userID, channelID);
 						break;
 						case 'boss':
 							message_to("`You are not high enough level to challenge a boss.`", channelID);
@@ -154,7 +155,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 							// message_to("`You are not high enough level to fight here.`", channelID);
 						break;
 						default:
-							message_to("`Fight options are: player, lowlands, midlands, highlands, boss.`", channelID);
+							message_to("`Fight options are: lowlands, midlands, highlands.`", channelID);
 						break;
 					}
 			break;
@@ -174,10 +175,14 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					message_to("`This feature is not yet complete`", channelID);
 					points[userID].fight_status = 0;
 				}
-// TODO: Complete pvp battle
+// Not your turn in PVP
 				else if (points[userID].fight_status == 3){ // pvp
-					message_to("`This feature is not yet complete`", channelID);
+					message_to("`It is not your turn!`", channelID);
 					points[userID].fight_status = 0;
+				}
+// Your turn in PVP
+				else if (points[userID].fight_status == 4){ // pvp
+					attack(userID, channelID);
 				}
 			break;
 			
@@ -314,7 +319,7 @@ function name(userID, chicken_num, chicken_name, channelID){
 	if (count_chickens(userID) == 0)
 		message_to("`yOU hAs nO cHicKEnS!`", channelID);
 // If the user did not enter a number (call to isInteger) and string (I suppose this can be anything)
-	else if (chicken_num != isInteger(chicken_num) || chicken_name == undefined)
+	else if (!isInteger(chicken_num) || chicken_name == undefined)
 		message_to("`Usage: !name [#] [name]`", channelID);
 // If the user chose a number higher than the number of chickens they have
 // Recall that the chicken display numbers starting at 1
@@ -381,6 +386,10 @@ function chicken_display(userID, channelID){
 // Count how many chickens a user has
 // TODO: Easier way to do this?
 	var x = count_chickens(userID);
+	if (x > 30){
+		message_to("`An additional " + (x - 30) + " chickens are not being shown.`", channelID);
+		x = 30;
+	}
 // Begin the message
 	var message = "`";
 // Append the chickens' stats to a message
@@ -419,7 +428,7 @@ function fight_player(player_accept_decline, userID, channelID){
 // Accept the invite
 			else{
 // Set a variable equal to the userID of the pvp initializer
-				var challenger = points[points[userID].player_enemy_id].username;
+				var challenger = points[userID].player_enemy_id;
 // Update fight status
 // Accepter gets to go first (4)
 // Challenger goes second (3)
@@ -427,7 +436,7 @@ function fight_player(player_accept_decline, userID, channelID){
 				points[challenger].fight_status = 3;
 // Send a message
 // TODO: Notify both players upon accepting
-				message_to("`You have accepted " + challenger + "'s pvp invite!`", channelID);
+				message_to("`You have accepted " + points[challenger].username + "'s pvp invite!`", channelID);
 			}
 		break;
 // Case Decline
@@ -437,13 +446,14 @@ function fight_player(player_accept_decline, userID, channelID){
 				message_to("`You have no pending pvp invites!`", channelID);
 			else{
 // Set a variable equal to the userID of the pvp initializer
-				var challenger = points[points[userID].player_enemy_id].username;
+				var challenger = points[userID].player_enemy_id;
 // Update status to 0 (not in combat) for both
 				points[userID].fight_status = 0;
 				points[challenger].fight_status = 0;
+				points[challenger].player_enemy_id = userID;
 // Send a message
 // TODO: Notify both players upon declining
-				message_to("`You have declined " + challenger + "'s pvp invite!`", channelID);
+				message_to("`You have declined " + points[challenger].username + "'s pvp invite!`", channelID);
 			}
 		break;
 // Declare new PVP request
@@ -451,14 +461,14 @@ function fight_player(player_accept_decline, userID, channelID){
 // Locate player name called in database
 			var challenger = find_player_ID(player_accept_decline);
 // If the player name could not be found
-			if (challenger === undefined)
+			if (challenger == undefined)
 				message_to("`Could not find player " + player_accept_decline + "!`", channelID);
 // If the opponent has no lineup set
 // TODO: Option to change mid-fight exists so maybe change this?
 			// else if (challenger.lineup == -1)
 				// message_to("`Your opponent must have a chicken in their lineup!`", channelID);
 // Successful
-			else if (points[challenger].fight_status === 0){
+			else if (points[challenger].fight_status == 0){
 				// Change opponent's fight status to pending invite
 				points[challenger].fight_status = 5;
 // Change opponent's player_enemy_id to caller's ID				
@@ -472,7 +482,7 @@ function fight_player(player_accept_decline, userID, channelID){
 // If the opponent is already fighting or pending
 			else
 				message_to("`Your opponent is already engaged in battle!`", channelID);
-			console.log(challenger.fight_status);
+			// console.log(challenger.fight_status);
 		break;
 	}
 };
@@ -744,6 +754,9 @@ function attack(userID, channelID){
 // Clear the fight status of both players back to 0
 			points[userID].fight_status = 0;
 			points[enemy_player].fight_status = 0;
+// Reset the player_enemy_id
+			points[userID].player_enemy_id = '';
+			points[enemy_player].player_enemy_id = '';
 // Send a message
 			message_to("`Enemy chicken took " + total_atk + " damage and was defeated!\n" + 
 				"Your chicken gained " + chicken.exp + " experience.\n", channelID);
@@ -753,19 +766,20 @@ function attack(userID, channelID){
 		}
 // If the chicken didn't die
 		else{
-// Call how much damage was dealt
-			message_to("`Enemy chicken took " + total_atk + " damage!`", channelID);
 // Set the player's fight status to 3 (NOT YOUR TURN)
 			points[userID].fight_status = 3;
 // Sets the opponent's fight status to 4 (Your turn)
 // TODO: Notify opponent
 			points[enemy_player] = 4;
+// Call how much damage was dealt
+			message_to("`Enemy chicken took " + total_atk + " damage!`", channelID);
+
 		}
 	} // End PVP
 	else
 		message_to("`Hmm, something's not right.`", channelID);
 // Update this information in the JSON
-		updateJSON();	
+	updateJSON();	
 };
 
 function heal(userID, channelID){
