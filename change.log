@@ -1,6 +1,8 @@
 [10/15/17]
 Fixed naming logic error
 Fixed chicken display to cap at 30 chickens and display how many aren't being shown
+Need to update !lineup doing the same thing
+PVP now works - needs balancing and a little something else
 
 [10/12/17]
 Fixed the PVP request system
